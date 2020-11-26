@@ -1,28 +1,32 @@
 package config
 
 import (
-	"github.com/stack-labs/stack-rpc/config/loader"
-	"github.com/stack-labs/stack-rpc/config/reader"
-	"github.com/stack-labs/stack-rpc/config/source"
+	"github.com/stack-labs/stack-rpc/pkg/cli"
+	"github.com/stack-labs/stack-rpc/pkg/config/source"
 )
 
-// Loader sets the loader for manager config
-func Loader(l loader.Loader) Option {
+type Options struct {
+	FilePath string
+	App      *cli.App
+	Sources  []source.Source
+}
+
+type Option func(o *Options)
+
+func FilePath(f string) Option {
 	return func(o *Options) {
-		o.Loader = l
+		o.FilePath = f
 	}
 }
 
-// Source appends a source to list of sources
-func Source(s source.Source) Option {
+func Source(s ...source.Source) Option {
 	return func(o *Options) {
-		o.Source = append(o.Source, s)
+		o.Sources = append(o.Sources, s...)
 	}
 }
 
-// Reader sets the config reader
-func Reader(r reader.Reader) Option {
+func App(a *cli.App) Option {
 	return func(o *Options) {
-		o.Reader = r
+		o.App = a
 	}
 }

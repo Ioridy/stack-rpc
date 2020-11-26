@@ -1,4 +1,4 @@
-// Package micro is a pluggable framework for microservices
+// Package stack is a pluggable framework for microservices
 package stack
 
 import (
@@ -17,14 +17,14 @@ type Service interface {
 	// The service name
 	Name() string
 	// Init initialises options
-	Init(...Option)
+	Init(...Option) error
 	// Options returns the current options
 	Options() Options
 	// Client is used to call services
 	Client() client.Client
 	// Server is for handling requests and events
 	Server() server.Server
-	// Run the service
+	//  Run the service
 	Run() error
 	// The service implementation
 	String() string
@@ -48,10 +48,6 @@ type Publisher interface {
 }
 
 type Option func(*Options)
-
-var (
-	HeaderPrefix = "Micro-"
-)
 
 // NewService creates and returns a new Service based on the packages within.
 func NewService(opts ...Option) Service {

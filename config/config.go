@@ -1,98 +1,153 @@
-// Package config is an interface for dynamic configuration.
 package config
 
 import (
-	"context"
+	"encoding/json"
+	"github.com/stack-labs/stack-rpc/pkg/config/source/memory"
+	"strings"
 
-	"github.com/stack-labs/stack-rpc/config/loader"
-	"github.com/stack-labs/stack-rpc/config/reader"
-	"github.com/stack-labs/stack-rpc/config/source"
-	"github.com/stack-labs/stack-rpc/config/source/file"
+	"github.com/stack-labs/stack-rpc/pkg/config"
+	"github.com/stack-labs/stack-rpc/pkg/config/reader"
+	cliSource "github.com/stack-labs/stack-rpc/pkg/config/source/cli"
+	"github.com/stack-labs/stack-rpc/pkg/config/source/file"
+	"github.com/stack-labs/stack-rpc/util/log"
 )
 
-var (
-	staticDirName    = "resources"
-	DefaultStaticDir = ""
-	// Default Config Manager
-	DefaultConfig, _ = NewConfig()
-)
+type Broker struct {
+	Address string `json:"address"`
+	Name    string `json:"name" `
+}
 
-// Config is an interface abstraction for dynamic configuration
+type Pool struct {
+	Size json.Number `json:"size"`
+	TTL  json.Number `json:"ttl"`
+}
+
+type ClientRequest struct {
+	Retries json.Number `json:"retries"`
+	Timeout json.Number `json:"timeout"`
+}
+
+type Client struct {
+	Protocol string        `json:"protocol"`
+	Pool     Pool          `json:"pool"`
+	Request  ClientRequest `json:"request"`
+}
+
+type Registry struct {
+	Address  string      `json:"address"`
+	Interval json.Number `json:"interval"`
+	Name     string      `json:"name"`
+	TTL      json.Number `json:"ttl"`
+}
+
+type Metadata []string
+
+func (m Metadata) Value(k string) string {
+	for _, s := range m {
+		kv := strings.Split(s, "=")
+		if len(kv) == 2 && kv[0] == k {
+			return kv[1]
+		}
+	}
+
+	return ""
+}
+
+type Server struct {
+	Address   string   `json:"address"`
+	Advertise string   `json:"advertise"`
+	ID        string   `json:"id"`
+	Metadata  Metadata `json:"metadata"`
+	Name      string   `json:"name"`
+	Protocol  string   `json:"protocol"`
+	Version   string   `json:"version"`
+}
+
+type Selector struct {
+	Name string `json:"name"`
+}
+
+type Transport struct {
+	Name    string `json:"name"`
+	Address string `json:"address"`
+}
+
+type Logger struct {
+	Name  string `json:"name"`
+	Level string `json:"level"`
+}
+
+type stack struct {
+	Broker    Broker    `json:"broker"`
+	Client    Client    `json:"client"`
+	Profile   string    `json:"profile"`
+	Registry  Registry  `json:"registry"`
+	Runtime   string    `json:"runtime"`
+	Server    Server    `json:"server"`
+	Selector  Selector  `json:"selector"`
+	Transport Transport `json:"transport"`
+	Logger    Logger    `json:"logger"`
+}
+
+type Value struct {
+	Stack stack `json:"stack"`
+}
+
 type Config interface {
-	// provide the reader.Values interface
 	reader.Values
-	// Stop the config loader/watcher
 	Close() error
-	// Load config sources
-	Load(source ...source.Source) error
-	// Force a source changeset sync
-	Sync() error
-	// Watch a value for changes
-	Watch(path ...string) (Watcher, error)
 }
 
-// Watcher is the config watcher
-type Watcher interface {
-	Next() (reader.Value, error)
-	Stop() error
+type stackConfig struct {
+	config config.Config
 }
 
-type Options struct {
-	Loader loader.Loader
-	Reader reader.Reader
-	Source []source.Source
+// Init Stack's Config component
+// Any developer Don't use this Func anywhere. Init works for Stack Framework only
+func New(opts ...Option) (Config, error) {
+	var o = Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
 
-	// for alternative data
-	Context context.Context
+	// need read from config file
+	if len(o.FilePath) > 0 {
+		log.Info("config read from file:", o.FilePath)
+		o.Sources = append(o.Sources, file.NewSource(file.WithPath(o.FilePath)))
+	}
+	defaultSource, _ := json.Marshal(GetDefault())
+	o.Sources = append(o.Sources,
+		cliSource.NewSource(o.App, cliSource.Context(o.App.Context())),
+		memory.NewSource(memory.WithJSON(defaultSource)),
+	)
 
-	StaticDir string
+	c, err := config.NewConfig(config.Storage(true), config.Watch(false))
+	if err != nil {
+		return nil, err
+	}
+	if err := c.Load(o.Sources...); err != nil {
+		return nil, err
+	}
+
+	return &stackConfig{config: c}, nil
 }
 
-type Option func(o *Options)
-
-// NewConfig returns new config
-func NewConfig(opts ...Option) (Config, error) {
-	return newConfig(opts...)
+func (c *stackConfig) Get(path ...string) reader.Value {
+	return c.config.Get(path...)
 }
 
-// Return config as raw json
-func Bytes() []byte {
-	return DefaultConfig.Bytes()
+func (c *stackConfig) Bytes() []byte {
+	return c.config.Bytes()
 }
 
-// Return config as a map
-func Map() map[string]interface{} {
-	return DefaultConfig.Map()
+func (c *stackConfig) Map() map[string]interface{} {
+	return c.config.Map()
 }
 
-// Scan values to a go type
-func Scan(v interface{}) error {
-	return DefaultConfig.Scan(v)
+func (c *stackConfig) Scan(v interface{}) error {
+	return c.config.Scan(v)
 }
 
-// Force a source changeset sync
-func Sync() error {
-	return DefaultConfig.Sync()
-}
-
-// Get a value from the config
-func Get(path ...string) reader.Value {
-	return DefaultConfig.Get(path...)
-}
-
-// Load config sources
-func Load(source ...source.Source) error {
-	return DefaultConfig.Load(source...)
-}
-
-// Watch a value for changes
-func Watch(path ...string) (Watcher, error) {
-	return DefaultConfig.Watch(path...)
-}
-
-// LoadFile is short hand for creating a file source and loading it
-func LoadFile(path string) error {
-	return Load(file.NewSource(
-		file.WithPath(path),
-	))
+func (c *stackConfig) Close() error {
+	return c.config.Close()
 }

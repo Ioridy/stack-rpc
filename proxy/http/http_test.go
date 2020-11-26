@@ -55,7 +55,7 @@ func TestHTTPProxy(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	// new micro service
+	// new stack service
 	service := stack.NewService(
 		stack.Context(ctx),
 		stack.Name("foobar"),
@@ -74,7 +74,12 @@ func TestHTTPProxy(t *testing.T) {
 	// run service
 	// server
 	go http.Serve(c, nil)
-	go service.Run()
+	go func() {
+		if err := service.Run(); err != nil {
+			wg.Done()
+			t.Fatal(err)
+		}
+	}()
 
 	// wait till service is started
 	wg.Wait()

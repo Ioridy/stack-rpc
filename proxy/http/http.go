@@ -1,4 +1,4 @@
-// Package http provides a micro rpc to http proxy
+// Package http provides a stack rpc to http proxy
 package http
 
 import (
@@ -10,10 +10,10 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/stack-labs/stack-rpc/config/options"
 	"github.com/stack-labs/stack-rpc/errors"
 	"github.com/stack-labs/stack-rpc/proxy"
 	"github.com/stack-labs/stack-rpc/server"
+	"github.com/stack-labs/stack-rpc/util/options"
 )
 
 // Proxy will proxy rpc requests as http POST requests. It is a server.Proxy
@@ -28,16 +28,16 @@ type Proxy struct {
 }
 
 func getMethod(hdr map[string]string) string {
-	switch hdr["Micro-Method"] {
+	switch hdr["Stack-Method"] {
 	case "GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH":
-		return hdr["Micro-Method"]
+		return hdr["Stack-Method"]
 	default:
 		return "POST"
 	}
 }
 
 func getEndpoint(hdr map[string]string) string {
-	ep := hdr["Micro-Endpoint"]
+	ep := hdr["Stack-Endpoint"]
 	if len(ep) > 0 && ep[0] == '/' {
 		return ep
 	}
@@ -45,11 +45,11 @@ func getEndpoint(hdr map[string]string) string {
 }
 
 func getTopic(hdr map[string]string) string {
-	ep := hdr["Micro-Topic"]
+	ep := hdr["Stack-Topic"]
 	if len(ep) > 0 && ep[0] == '/' {
 		return ep
 	}
-	return "/" + hdr["Micro-Topic"]
+	return "/" + hdr["Stack-Topic"]
 }
 
 // ProcessMessage handles incoming asynchronous messages

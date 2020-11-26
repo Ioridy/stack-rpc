@@ -34,3 +34,6 @@ _cgo_export.*
 *~
 *.swp
 *.swo
+
+stack_config.conf*
+config/stack_config.conf*
