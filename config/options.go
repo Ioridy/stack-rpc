@@ -1,23 +1,16 @@
 package config
 
 import (
-	"github.com/stack-labs/stack-rpc/pkg/cli"
 	"github.com/stack-labs/stack-rpc/pkg/config/source"
 )
 
 type Options struct {
-	FilePath string
-	App      *cli.App
-	Sources  []source.Source
+	Sources []source.Source
+	Storage bool
+	Watch   bool
 }
 
 type Option func(o *Options)
-
-func FilePath(f string) Option {
-	return func(o *Options) {
-		o.FilePath = f
-	}
-}
 
 func Source(s ...source.Source) Option {
 	return func(o *Options) {
@@ -25,8 +18,14 @@ func Source(s ...source.Source) Option {
 	}
 }
 
-func App(a *cli.App) Option {
+func Storage(s bool) Option {
 	return func(o *Options) {
-		o.App = a
+		o.Storage = s
+	}
+}
+
+func Watch(w bool) Option {
+	return func(o *Options) {
+		o.Watch = w
 	}
 }

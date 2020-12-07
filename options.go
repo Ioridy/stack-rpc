@@ -2,32 +2,36 @@ package stack
 
 import (
 	"context"
-	"github.com/stack-labs/stack-rpc/logger"
 	"time"
 
 	"github.com/stack-labs/stack-rpc/broker"
+	"github.com/stack-labs/stack-rpc/broker/http"
 	"github.com/stack-labs/stack-rpc/client"
+	clientM "github.com/stack-labs/stack-rpc/client/mucp"
 	"github.com/stack-labs/stack-rpc/client/selector"
+	selectorR "github.com/stack-labs/stack-rpc/client/selector/registry"
 	"github.com/stack-labs/stack-rpc/cmd"
 	"github.com/stack-labs/stack-rpc/config"
+	"github.com/stack-labs/stack-rpc/logger"
 	"github.com/stack-labs/stack-rpc/pkg/cli"
-	"github.com/stack-labs/stack-rpc/pkg/config/source"
 	"github.com/stack-labs/stack-rpc/registry"
+	"github.com/stack-labs/stack-rpc/registry/mdns"
 	"github.com/stack-labs/stack-rpc/server"
+	"github.com/stack-labs/stack-rpc/server/mucp"
 	"github.com/stack-labs/stack-rpc/transport"
+	transportH "github.com/stack-labs/stack-rpc/transport/http"
 )
 
 type Options struct {
-	Broker       broker.Broker
-	Cmd          cmd.Cmd
-	Client       client.Client
-	Server       server.Server
-	Registry     registry.Registry
-	Transport    transport.Transport
-	Selector     selector.Selector
-	ConfigSource []source.Source
-	Config       config.Config
-	Logger       logger.Logger
+	Broker    broker.Broker
+	Cmd       cmd.Cmd
+	Client    client.Client
+	Server    server.Server
+	Registry  registry.Registry
+	Transport transport.Transport
+	Selector  selector.Selector
+	Config    config.Config
+	Logger    logger.Logger
 	// Before and After funcs
 	BeforeStart []func() error
 	BeforeStop  []func() error
@@ -43,14 +47,15 @@ type Options struct {
 
 func newOptions(opts ...Option) Options {
 	opt := Options{
-		Broker:    broker.DefaultBroker,
+		Broker:    http.NewBroker(),
 		Cmd:       cmd.NewCmd(),
-		Client:    client.DefaultClient,
-		Server:    server.DefaultServer,
-		Registry:  registry.DefaultRegistry,
-		Transport: transport.DefaultTransport,
-		Selector:  selector.DefaultSelector,
+		Client:    clientM.NewClient(),
+		Server:    mucp.NewServer(),
+		Registry:  mdns.NewRegistry(),
+		Transport: transportH.NewTransport(),
+		Selector:  selectorR.NewSelector(),
 		Logger:    logger.DefaultLogger,
+		Config:    config.DefaultConfig,
 		Context:   context.Background(),
 		Signal:    true,
 	}
@@ -60,12 +65,6 @@ func newOptions(opts ...Option) Options {
 	}
 
 	return opt
-}
-
-func ConfigSource(s ...source.Source) Option {
-	return func(o *Options) {
-		o.ConfigSource = s
-	}
 }
 
 func Logger(l logger.Logger) Option {
@@ -92,6 +91,12 @@ func Cmd(c cmd.Cmd) Option {
 func Client(c client.Client) Option {
 	return func(o *Options) {
 		o.Client = c
+	}
+}
+
+func Config(c config.Config) Option {
+	return func(o *Options) {
+		o.Config = c
 	}
 }
 

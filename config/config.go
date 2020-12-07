@@ -2,14 +2,12 @@ package config
 
 import (
 	"encoding/json"
-	"github.com/stack-labs/stack-rpc/pkg/config/source/memory"
+	"fmt"
+	"github.com/stack-labs/stack-rpc/util/log"
 	"strings"
 
 	"github.com/stack-labs/stack-rpc/pkg/config"
 	"github.com/stack-labs/stack-rpc/pkg/config/reader"
-	cliSource "github.com/stack-labs/stack-rpc/pkg/config/source/cli"
-	"github.com/stack-labs/stack-rpc/pkg/config/source/file"
-	"github.com/stack-labs/stack-rpc/util/log"
 )
 
 type Broker struct {
@@ -77,7 +75,7 @@ type Logger struct {
 	Level string `json:"level"`
 }
 
-type stack struct {
+type Stack struct {
 	Broker    Broker    `json:"broker"`
 	Client    Client    `json:"client"`
 	Profile   string    `json:"profile"`
@@ -90,46 +88,63 @@ type stack struct {
 }
 
 type Value struct {
-	Stack stack `json:"stack"`
+	Stack Stack `json:"stack"`
 }
 
 type Config interface {
 	reader.Values
+	Init(opts ...Option) error
 	Close() error
 }
 
 type stackConfig struct {
 	config config.Config
+	opts   Options
 }
 
 // Init Stack's Config component
-// Any developer Don't use this Func anywhere. Init works for Stack Framework only
-func New(opts ...Option) (Config, error) {
-	var o = Options{}
+// Any developer Don't use this Func anywhere. NewConfig works for Stack Framework only
+func NewConfig(opts ...Option) Config {
+	var o = Options{
+		Watch: true,
+	}
 	for _, opt := range opts {
 		opt(&o)
 	}
 
-	// need read from config file
-	if len(o.FilePath) > 0 {
-		log.Info("config read from file:", o.FilePath)
-		o.Sources = append(o.Sources, file.NewSource(file.WithPath(o.FilePath)))
+	return &stackConfig{opts: o}
+}
+
+func (c *stackConfig) Init(opts ...Option) (err error) {
+	for _, opt := range opts {
+		opt(&c.opts)
 	}
-	defaultSource, _ := json.Marshal(GetDefault())
-	o.Sources = append(o.Sources,
-		cliSource.NewSource(o.App, cliSource.Context(o.App.Context())),
-		memory.NewSource(memory.WithJSON(defaultSource)),
+
+	defer func() {
+		if err != nil {
+			log.Errorf("config init error: %s", err)
+		}
+	}()
+
+	cfg, err := config.NewConfig(
+		config.Storage(c.opts.Storage),
+		config.Watch(c.opts.Watch),
 	)
-
-	c, err := config.NewConfig(config.Storage(true), config.Watch(false))
 	if err != nil {
-		return nil, err
-	}
-	if err := c.Load(o.Sources...); err != nil {
-		return nil, err
+		err = fmt.Errorf("create new config error: %s", err)
+		return
 	}
 
-	return &stackConfig{config: c}, nil
+	if err = cfg.Load(c.opts.Sources...); err != nil {
+		err = fmt.Errorf("load sources error: %s", err)
+		return
+	}
+
+	c.config = cfg
+
+	// cache c as sugar
+	_sugar = c
+	return nil
 }
 
 func (c *stackConfig) Get(path ...string) reader.Value {

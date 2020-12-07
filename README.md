@@ -6,9 +6,29 @@ Stack-RPC旨在为中国开发者提供通用的分布式服务微服务开发�
 
 项目于2020年11月2日正式成立，第一版本基于Go-Micro的1.18修改。
 
+## 安装
+
+```
+go get github.com/stack-labs/stack-rpc@v1.0.0-rc2
+```
+
+## 简单易用
+
+启动一个微服务只需要如下代码
+
+```
+func main() {
+	service := stack.NewService(stack.Name("stack.rpc.greeter"))
+	service.Init()
+	service.Run()
+}
+```
+
+我们封装了微服务内在的复杂度，比如服务注册与发现、配置管理等。用户只需要花极小的成本学习如何暴露接口，如何启动服务，剩下的精力完全投放在业务需求的开发上。
+
 ## 特性
 
-Stack-RPC 同时即提供轻量的开发库，同时也提供对应高级别的扩展库，为大家带来开箱即用的开发体验。
+Stack-RPC既提供轻量的开发库，同时也提供对应高级别的扩展库，为大家带来开箱即用的开发体验。
 
 支持的特性主要有：
 
@@ -24,11 +44,11 @@ Stack-RPC 同时即提供轻量的开发库，同时也提供对应高级别的�
 
 ## 开始使用
 
-我们为一直为大家准备持续开发、更新、愈加丰富的文档与资料：[MicroHQ](https://microhq.cn/docs/stack-rpc/introduce-cn)
+我们为一直为大家准备持续开发、更新、愈加丰富的文档与资料：[StackLabs](https://stacklabs.cn/docs/stack-rpc/introduce-cn)
 
 ## 与Go-Micro的差异
 
-- 取消Micro工具集，以插件形式集成到Stack-RPC中
+- 取消Micro工具集，以服务插件形式集成到Stack-RPC中
   - Web控制台插件
   - 网关插件
   - 注册中心插件

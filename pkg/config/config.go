@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/modern-go/reflect2"
 	log "github.com/stack-labs/stack-rpc/logger"
 	"github.com/stack-labs/stack-rpc/pkg/config/loader"
 	"github.com/stack-labs/stack-rpc/pkg/config/reader"
@@ -24,7 +25,7 @@ type Config interface {
 	reader.Values
 	// Stop the config loader/watcher
 	Close() error
-	// Load config sources
+	// Load config Sources
 	Load(source ...source.Source) error
 	// Force a source change set sync
 	Sync() error
@@ -184,7 +185,7 @@ func (c *config) Scan(v interface{}) error {
 	return c.values.Scan(v)
 }
 
-// sync loads all the sources, calls the parser and updates the config
+// sync loads all the Sources, calls the parser and updates the config
 func (c *config) Sync() error {
 	if err := c.loader.Sync(); err != nil {
 		return err
@@ -228,7 +229,7 @@ func (c *config) Get(path ...string) reader.Value {
 	defer c.RUnlock()
 
 	// did sync actually work?
-	if c.values != nil {
+	if !reflect2.IsNil(c.values) {
 		return c.values.Get(path...)
 	}
 
